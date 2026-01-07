@@ -27,6 +27,8 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
+            implementation("ch.qos.logback:logback-classic:1.4.14")
         }
     }
 }
@@ -37,7 +39,7 @@ compose.desktop {
         mainClass = "xyz.demorgan.macdockui.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "xyz.demorgan.macdockui"
             packageVersion = "1.0.0"
         }
