@@ -15,6 +15,7 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -26,6 +27,8 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
             implementation("ch.qos.logback:logback-classic:1.4.14")

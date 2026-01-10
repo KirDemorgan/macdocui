@@ -5,15 +5,23 @@ import java.util.prefs.Preferences
 object SettingsManager {
     private val prefs = Preferences.userNodeForPackage(SettingsManager::class.java)
 
-    var savePath: String
-        get() = prefs.get("save_path", "")
-        set(value) = prefs.put("save_path", value)
+    var storagePath: String
+        get() = prefs.get("storage_path", "")
+        set(value) = prefs.put("storage_path", value)
 
-    var textSetting: String
-        get() = prefs.get("text_setting", "Default Value")
-        set(value) = prefs.put("text_setting", value)
+    var macOSVersion: String
+        get() = prefs.get("macos_version", "14")
+        set(value) = prefs.put("macos_version", value)
 
-    var booleanSetting: Boolean
-        get() = prefs.getBoolean("boolean_setting", false)
-        set(value) = prefs.putBoolean("boolean_setting", value)
+    var ramSize: String
+        get() = prefs.get("ram_size", "8G")
+        set(value) = prefs.put("ram_size", value)
+
+    var rememberContainer: Boolean
+        get() = prefs.getBoolean("remember_container", true)
+        set(value) = prefs.putBoolean("remember_container", value)
+        
+    var lastContainerId: String
+        get() = prefs.get("last_container_id", "")
+        set(value) = prefs.put("last_container_id", value)
 }
