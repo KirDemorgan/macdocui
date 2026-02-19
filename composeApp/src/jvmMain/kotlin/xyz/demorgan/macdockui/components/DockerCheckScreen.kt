@@ -10,7 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
@@ -22,28 +23,35 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xyz.demorgan.macdockui.docker.DockerManager
 import xyz.demorgan.macdockui.docker.DockerStatus
+import xyz.demorgan.macdockui.ui.theme.Success
+import xyz.demorgan.macdockui.ui.theme.Warning
+import xyz.demorgan.macdockui.viewmodel.AppViewModel
 
 @Composable
 fun DockerCheckScreen(
-    dockerStatus: DockerStatus,
-    onRetry: () -> Unit
+    viewModel: AppViewModel
 ) {
+    val dockerStatus by viewModel.dockerStatus.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(32.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -51,264 +59,156 @@ fun DockerCheckScreen(
             DockerStatus.CHECKING -> {
                 CircularProgressIndicator(
                     modifier = Modifier.size(64.dp),
-                    strokeWidth = 6.dp
+                    strokeWidth = 6.dp,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Проверка установки Docker...",
+                    text = "Checking Docker Installation...",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
             
             DockerStatus.INSTALLED -> {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Docker установлен",
+                    contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = Color(0xFF4CAF50)
+                    tint = Success
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Docker установлен и готов к работе",
+                    text = "Docker is ready",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF4CAF50)
+                    color = Success
                 )
             }
             
             DockerStatus.NOT_INSTALLED -> {
-                Icon(
-                    imageVector = Icons.Default.Error,
-                    contentDescription = "Docker не установлен",
-                    modifier = Modifier.size(64.dp),
-                    tint = Color(0xFFF44336)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Docker не установлен",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFF44336)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Пожалуйста, установите Docker Desktop и повторите попытку",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                StatusErrorView(
+                    icon = Icons.Default.Error,
+                    title = "Docker not installed",
+                    message = "Please install Docker Desktop to continue."
                 ) {
-                    Button(
-                        onClick = { DockerManager.openDockerInstallPage() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2196F3)
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Скачать Docker")
-                    }
-                    
-                    Button(
-                        onClick = onRetry,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Повторить")
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(onClick = { DockerManager.openDockerInstallPage() }) {
+                            Icon(Icons.Default.Download, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Download Docker")
+                        }
+                        Button(
+                            onClick = viewModel::checkDocker,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Icon(Icons.Default.Refresh, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Retry")
+                        }
                     }
                 }
             }
             
             DockerStatus.DOCKER_DESKTOP_NOT_RUNNING -> {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Docker Desktop не запущен",
-                    modifier = Modifier.size(64.dp),
-                    tint = Color(0xFFFF9800)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Docker Desktop не запущен",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFFF9800)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Docker установлен, но Docker Desktop не запущен. Пожалуйста, запустите Docker Desktop и повторите попытку.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                 StatusErrorView(
+                    icon = Icons.Default.Warning,
+                    title = "Docker Desktop not running",
+                    message = "Docker is installed but not running. Please start Docker Desktop.",
+                    tint = Warning
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Повторить проверку")
+                    Button(onClick = viewModel::checkDocker) {
+                        Icon(Icons.Default.Refresh, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Check Again")
+                    }
                 }
             }
             
             DockerStatus.WSL_REQUIRED -> {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "WSL требуется",
-                    modifier = Modifier.size(64.dp),
-                    tint = Color(0xFFFF9800)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Требуется настройка WSL",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFFF9800)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Для работы macOS в Docker на Windows требуется WSL (Windows Subsystem for Linux) с поддержкой виртуализации.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                StatusErrorView(
+                    icon = Icons.Default.Warning,
+                    title = "WSL Configuration Required",
+                    message = "WSL 2 is required to run Docker on Windows.",
+                    tint = Warning
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                     Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
-                            onClick = { DockerManager.openWSLInstallPage() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2196F3)
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Установить WSL")
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(onClick = { DockerManager.openWSLInstallPage() }) {
+                                Icon(Icons.Default.Download, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Install WSL")
+                            }
+                            Button(
+                                onClick = { DockerManager.openVirtualizationGuide() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Icon(Icons.Default.Help, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Guide")
+                            }
                         }
-                        
-                        Button(
-                            onClick = { DockerManager.openVirtualizationGuide() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF9C27B0)
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Help,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Руководство")
+                        Button(onClick = viewModel::checkDocker) {
+                            Icon(Icons.Default.Refresh, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Retry")
                         }
-                    }
-                    
-                    Button(
-                        onClick = onRetry,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Повторить проверку")
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "📋 Пошаговая инструкция:",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "1. Откройте PowerShell от имени администратора\n" +
-                                  "2. Выполните: wsl --install\n" +
-                                  "3. Перезагрузите компьютер\n" +
-                                  "4. Включите виртуализацию в BIOS (Intel VT-x или AMD-V)\n" +
-                                  "5. В Docker Desktop включите WSL 2 integration\n" +
-                                  "6. Нажмите 'Повторить проверку'",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                        )
                     }
                 }
             }
             
             DockerStatus.ERROR -> {
-                Icon(
-                    imageVector = Icons.Default.Error,
-                    contentDescription = "Ошибка",
-                    modifier = Modifier.size(64.dp),
-                    tint = Color(0xFFF44336)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Ошибка при проверке Docker",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFF44336)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                StatusErrorView(
+                    icon = Icons.Default.Error,
+                    title = "Unexpected Error",
+                    message = "An error occurred while checking Docker status."
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Повторить")
+                    Button(onClick = viewModel::checkDocker) {
+                        Icon(Icons.Default.Refresh, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Retry")
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun StatusErrorView(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    message: String,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.error,
+    action: @Composable () -> Unit
+) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(64.dp),
+        tint = tint
+    )
+    Spacer(modifier = Modifier.height(24.dp))
+    Text(
+        text = title,
+        fontSize = 20.sp,
+        fontWeight = FontWeight.Bold,
+        color = tint
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+    Text(
+        text = message,
+        fontSize = 16.sp,
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+        modifier = Modifier.padding(bottom = 24.dp)
+    )
+    action()
 }

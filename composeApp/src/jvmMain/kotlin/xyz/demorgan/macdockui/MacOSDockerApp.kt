@@ -1,69 +1,52 @@
 package xyz.demorgan.macdockui
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.demorgan.macdockui.components.AppLogsScreen
 import xyz.demorgan.macdockui.components.DockerCheckScreen
 import xyz.demorgan.macdockui.components.RunningScreen
-import xyz.demorgan.macdockui.docker.DockerManager
-import xyz.demorgan.macdockui.docker.DockerStatus
+import xyz.demorgan.macdockui.viewmodel.AppViewModel
+import xyz.demorgan.macdockui.viewmodel.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MacOSDockerApp() {
-    var currentScreen by remember { mutableStateOf(Screen.DOCKER_CHECK) }
-    var dockerStatus by remember { mutableStateOf(DockerStatus.CHECKING) }
-    var showLogs by remember { mutableStateOf(false) }
-    var showAppLogs by remember { mutableStateOf(false) }
+    val viewModel: AppViewModel = viewModel { AppViewModel() }
+    val currentScreen by viewModel.currentScreen.collectAsState()
+    val showAppLogs by viewModel.showAppLogs.collectAsState()
     
     LaunchedEffect(Unit) {
-        dockerStatus = DockerManager.checkDockerInstallation()
-        if (dockerStatus == DockerStatus.INSTALLED) {
-            currentScreen = if (DockerManager.isContainerRunning()) {
-                Screen.RUNNING
-            } else {
-                Screen.SETTINGS
-            }
-        }
+        viewModel.checkDocker()
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("macOS Docker UI") },
+                colors = TopAppBarDefaults.topAppBarColors(),
                 actions = {
-                    IconButton(onClick = { showAppLogs = !showAppLogs }) {
+                    IconButton(onClick = viewModel::toggleAppLogs) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Article,
-                            contentDescription = "Логи приложения"
+                            contentDescription = "App Logs"
                         )
-                    }
-                    
-                    if (currentScreen == Screen.RUNNING) {
-                        IconButton(onClick = { showLogs = !showLogs }) {
-                            Icon(
-                                imageVector = if (showLogs) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (showLogs) "Скрыть логи контейнера" else "Показать логи контейнера"
-                            )
-                        }
                     }
                 }
             )
@@ -74,42 +57,25 @@ fun MacOSDockerApp() {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                showAppLogs -> AppLogsScreen(
-                    onClose = { showAppLogs = false }
+            if (showAppLogs) {
+                AppLogsScreen(
+                    onClose = viewModel::toggleAppLogs
                 )
-                else -> {
-                    when (currentScreen) {
+            } else {
+                Crossfade(targetState = currentScreen) { screen ->
+                    when (screen) {
                         Screen.DOCKER_CHECK -> DockerCheckScreen(
-                            dockerStatus = dockerStatus,
-                            onRetry = {
-                                dockerStatus = DockerStatus.CHECKING
-                                dockerStatus = DockerManager.checkDockerInstallation()
-                                if (dockerStatus == DockerStatus.INSTALLED) {
-                                    currentScreen = if (DockerManager.isContainerRunning()) {
-                                        Screen.RUNNING
-                                    } else {
-                                        Screen.SETTINGS
-                                    }
-                                }
-                            }
+                            viewModel = viewModel
                         )
                         Screen.SETTINGS -> SettingsScreen(
-                            onStartDocker = { currentScreen = Screen.RUNNING }
+                            onStartDocker = { viewModel.navigateTo(Screen.RUNNING) }
                         )
                         Screen.RUNNING -> RunningScreen(
-                            showLogs = showLogs,
-                            onStop = { currentScreen = Screen.SETTINGS }
+                            onStop = { viewModel.navigateTo(Screen.SETTINGS) }
                         )
                     }
                 }
             }
         }
     }
-}
-
-enum class Screen {
-    DOCKER_CHECK,
-    SETTINGS,
-    RUNNING
 }

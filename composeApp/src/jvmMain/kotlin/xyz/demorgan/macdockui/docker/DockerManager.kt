@@ -7,9 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
-import java.awt.SystemTray
-import java.awt.Toolkit
-import java.awt.TrayIcon
 import java.io.File
 import java.io.IOException
 import java.net.URI
@@ -52,7 +49,7 @@ object DockerManager {
     }
     
     fun checkDockerInstallation(): DockerStatus {
-        addAppLog(LogLevel.INFO, "Проверка установки Docker...")
+        addAppLog(LogLevel.INFO, "Checking Docker installation...")
         
         return try {
             val dockerVersionProcess = ProcessBuilder("docker", "--version")
@@ -61,11 +58,11 @@ object DockerManager {
             
             val dockerExitCode = dockerVersionProcess.waitFor()
             if (dockerExitCode != 0) {
-                addAppLog(LogLevel.ERROR, "Docker не установлен")
+                addAppLog(LogLevel.ERROR, "Docker is not installed")
                 return DockerStatus.NOT_INSTALLED
             }
             
-            addAppLog(LogLevel.SUCCESS, "Docker установлен")
+            addAppLog(LogLevel.SUCCESS, "Docker is installed")
             
             val dockerInfoProcess = ProcessBuilder("docker", "info")
                 .redirectErrorStream(true)
@@ -73,27 +70,27 @@ object DockerManager {
             
             val dockerInfoExitCode = dockerInfoProcess.waitFor()
             if (dockerInfoExitCode != 0) {
-                addAppLog(LogLevel.WARNING, "Docker Desktop не запущен")
+                addAppLog(LogLevel.WARNING, "Docker Desktop is not running")
                 return DockerStatus.DOCKER_DESKTOP_NOT_RUNNING
             }
             
-            addAppLog(LogLevel.SUCCESS, "Docker Desktop запущен")
+            addAppLog(LogLevel.SUCCESS, "Docker Desktop is running")
             
             if (isWindows() && !checkWSLAvailability()) {
-                addAppLog(LogLevel.WARNING, "WSL не настроен для работы с Docker")
+                addAppLog(LogLevel.WARNING, "WSL is not configured for Docker")
                 return DockerStatus.WSL_REQUIRED
             }
             
-            addAppLog(LogLevel.SUCCESS, "Все требования выполнены, Docker готов к работе")
+            addAppLog(LogLevel.SUCCESS, "All requirements met")
             DockerStatus.INSTALLED
             
         } catch (e: IOException) {
             logger.error(e) { "Error checking Docker installation" }
-            addAppLog(LogLevel.ERROR, "Ошибка при проверке Docker: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Error checking Docker: ${e.message}")
             DockerStatus.NOT_INSTALLED
         } catch (e: Exception) {
             logger.error(e) { "Unexpected error checking Docker" }
-            addAppLog(LogLevel.ERROR, "Неожиданная ошибка: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Unexpected error: ${e.message}")
             DockerStatus.ERROR
         }
     }
@@ -104,7 +101,7 @@ object DockerManager {
 
     private fun checkWSLAvailability(): Boolean {
         return try {
-            addAppLog(LogLevel.INFO, "Проверка WSL...")
+            addAppLog(LogLevel.INFO, "Checking WSL...")
 
             val processBuilder = ProcessBuilder("wsl", "--list", "--verbose")
             val wslProcess = processBuilder.start()
@@ -123,24 +120,22 @@ object DockerManager {
                     wslOutput.contains("Ubuntu", ignoreCase = true)
 
             if (hasDistros) {
-                addAppLog(LogLevel.SUCCESS, "WSL настроен и готов к работе")
-
+                addAppLog(LogLevel.SUCCESS, "WSL is ready")
                 return checkKVMAvailability()
             } else {
-                addAppLog(LogLevel.WARNING, "Не найдено дистрибутивов WSL")
+                addAppLog(LogLevel.WARNING, "No WSL distros found")
                 return false
             }
         } catch (e: Exception) {
             logger.error(e) { "Error checking WSL" }
-            addAppLog(LogLevel.WARNING, "Ошибка при проверке WSL: ${e.message}")
+            addAppLog(LogLevel.WARNING, "Error checking WSL: ${e.message}")
             false
         }
     }
 
-    
     private fun checkKVMAvailability(): Boolean {
         return try {
-            addAppLog(LogLevel.INFO, "Проверка доступности KVM...")
+            addAppLog(LogLevel.INFO, "Checking KVM availability...")
             
             val testProcess = ProcessBuilder(
                 "docker", "run", "--rm", "--device=/dev/kvm", 
@@ -151,65 +146,49 @@ object DockerManager {
             val testExitCode = testProcess.waitFor()
             
             if (testExitCode == 0 && testOutput.contains("/dev/kvm")) {
-                addAppLog(LogLevel.SUCCESS, "KVM доступен через Docker")
+                addAppLog(LogLevel.SUCCESS, "KVM is available via Docker")
                 true
             } else {
-                addAppLog(LogLevel.WARNING, "KVM недоступен: $testOutput")
+                addAppLog(LogLevel.WARNING, "KVM is not available: $testOutput")
                 false
             }
         } catch (e: Exception) {
             logger.error(e) { "Error checking KVM availability" }
-            addAppLog(LogLevel.WARNING, "Не удалось проверить KVM: ${e.message}")
+            addAppLog(LogLevel.WARNING, "Failed to check KVM: ${e.message}")
             false
         }
     }
     
     fun openWSLInstallPage() {
         try {
-            addAppLog(LogLevel.INFO, "Открытие страницы установки WSL...")
+            addAppLog(LogLevel.INFO, "Opening WSL install page...")
             Desktop.getDesktop().browse(URI("https://docs.microsoft.com/en-us/windows/wsl/install"))
         } catch (e: Exception) {
-            addAppLog(LogLevel.ERROR, "Не удалось открыть браузер: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Failed to open browser: ${e.message}")
         }
     }
     
     fun openVirtualizationGuide() {
         try {
-            addAppLog(LogLevel.INFO, "Открытие руководства по виртуализации...")
+            addAppLog(LogLevel.INFO, "Opening virtualization guide...")
             Desktop.getDesktop().browse(URI("https://docs.docker.com/desktop/troubleshoot/topics/#virtualization"))
         } catch (e: Exception) {
-            addAppLog(LogLevel.ERROR, "Не удалось открыть браузер: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Failed to open browser: ${e.message}")
         }
     }
     
     fun openDockerInstallPage() {
         try {
-            addAppLog(LogLevel.INFO, "Открытие страницы установки Docker...")
+            addAppLog(LogLevel.INFO, "Opening Docker install page...")
             Desktop.getDesktop().browse(URI("https://www.docker.com/products/docker-desktop/"))
         } catch (e: Exception) {
-            addAppLog(LogLevel.ERROR, "Не удалось открыть браузер: ${e.message}")
-        }
-    }
-    
-    fun showNotification(title: String, message: String, type: TrayIcon.MessageType = TrayIcon.MessageType.INFO) {
-        try {
-            if (SystemTray.isSupported()) {
-                val systemTray = SystemTray.getSystemTray()
-                val image = Toolkit.getDefaultToolkit().createImage("icon.png")
-                val trayIcon = TrayIcon(image, "macOS Docker UI")
-                trayIcon.isImageAutoSize = true
-                trayIcon.toolTip = "macOS Docker UI"
-                systemTray.add(trayIcon)
-                trayIcon.displayMessage(title, message, type)
-            }
-        } catch (e: Exception) {
-            addAppLog(LogLevel.WARNING, "Не удалось показать уведомление: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Failed to open browser: ${e.message}")
         }
     }
     
     fun clearAppLogs() {
         _appLogs.value = emptyList()
-        addAppLog(LogLevel.INFO, "Логи очищены")
+        addAppLog(LogLevel.INFO, "Logs cleared")
     }
     
     suspend fun startMacOSContainer(
@@ -219,14 +198,14 @@ object DockerManager {
         onLogUpdate: (String) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            addAppLog(LogLevel.INFO, "Создание docker-compose.yml...")
+            addAppLog(LogLevel.INFO, "Creating docker-compose.yml...")
             
             val dockerComposeContent = createDockerComposeContent(version, ramSize, storagePath)
             val dockerComposeFile = File("docker-compose.yml")
             dockerComposeFile.writeText(dockerComposeContent)
             
-            addAppLog(LogLevel.SUCCESS, "docker-compose.yml создан")
-            addAppLog(LogLevel.INFO, "Запуск macOS контейнера...")
+            addAppLog(LogLevel.SUCCESS, "docker-compose.yml created")
+            addAppLog(LogLevel.INFO, "Starting macOS container...")
             
             val processBuilder = ProcessBuilder(
                 "docker-compose", "up", "-d"
@@ -239,36 +218,30 @@ object DockerManager {
             val exitCode = dockerProcess?.waitFor() ?: -1
             
             if (exitCode == 0) {
-                addAppLog(LogLevel.SUCCESS, "Контейнер успешно запущен")
-                onLogUpdate("Контейнер запущен успешно")
+                addAppLog(LogLevel.SUCCESS, "Container started successfully")
+                onLogUpdate("Container started successfully")
                 
                 if (xyz.demorgan.macdockui.config.SettingsManager.rememberContainer) {
                     val containerId = getContainerId()
                     if (containerId.isNotEmpty()) {
                         xyz.demorgan.macdockui.config.SettingsManager.lastContainerId = containerId
-                        addAppLog(LogLevel.INFO, "ID контейнера сохранен: $containerId")
+                        addAppLog(LogLevel.INFO, "Container ID saved: $containerId")
                     }
                 }
                 
                 delay(3000)
                 
-                showNotification(
-                    "macOS Docker UI", 
-                    "Контейнер запущен! Веб-интерфейс доступен по адресу http://127.0.0.1:8006/",
-                    TrayIcon.MessageType.INFO
-                )
-                
                 true
             } else {
-                addAppLog(LogLevel.ERROR, "Ошибка запуска контейнера. Код выхода: $exitCode")
-                onLogUpdate("Ошибка запуска: $errorOutput")
+                addAppLog(LogLevel.ERROR, "Error starting container. Exit code: $exitCode")
+                onLogUpdate("Error starting: $errorOutput")
                 false
             }
             
         } catch (e: Exception) {
             logger.error(e) { "Error starting macOS container" }
-            addAppLog(LogLevel.ERROR, "Ошибка запуска контейнера: ${e.message}")
-            onLogUpdate("Ошибка запуска контейнера: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Error starting container: ${e.message}")
+            onLogUpdate("Error starting container: ${e.message}")
             false
         }
     }
@@ -300,7 +273,7 @@ object DockerManager {
             process.inputStream.bufferedReader().readLines()
         } catch (e: Exception) {
             logger.error(e) { "Error getting container logs" }
-            listOf("Ошибка получения логов: ${e.message}")
+            listOf("Error getting logs: ${e.message}")
         }
     }
     
@@ -349,10 +322,10 @@ object DockerManager {
             val exitCode = process.waitFor()
             
             if (exitCode == 0 && output.isNotEmpty()) {
-                addAppLog(LogLevel.INFO, "Найден существующий контейнер: $lastContainerId")
+                addAppLog(LogLevel.INFO, "Found existing container: $lastContainerId")
                 true
             } else {
-                addAppLog(LogLevel.INFO, "Существующий контейнер не найден")
+                addAppLog(LogLevel.INFO, "Existing container not found")
                 xyz.demorgan.macdockui.config.SettingsManager.lastContainerId = ""
                 false
             }
@@ -367,7 +340,7 @@ object DockerManager {
         if (lastContainerId.isEmpty()) return@withContext false
         
         try {
-            addAppLog(LogLevel.INFO, "Запуск существующего контейнера...")
+            addAppLog(LogLevel.INFO, "Starting existing container...")
             
             val process = ProcessBuilder("docker", "start", lastContainerId)
                 .redirectErrorStream(true)
@@ -376,31 +349,25 @@ object DockerManager {
             val exitCode = process.waitFor()
             
             if (exitCode == 0) {
-                addAppLog(LogLevel.SUCCESS, "Существующий контейнер запущен")
-                
-                showNotification(
-                    "macOS Docker UI", 
-                    "Существующий контейнер запущен! Веб-интерфейс доступен по адресу http://127.0.0.1:8006/",
-                    TrayIcon.MessageType.INFO
-                )
-                
+                addAppLog(LogLevel.SUCCESS, "Existing container started")
                 true
             } else {
-                addAppLog(LogLevel.ERROR, "Не удалось запустить существующий контейнер")
+                addAppLog(LogLevel.ERROR, "Failed to start existing container")
                 xyz.demorgan.macdockui.config.SettingsManager.lastContainerId = ""
                 false
             }
         } catch (e: Exception) {
             logger.error(e) { "Error starting existing container" }
-            addAppLog(LogLevel.ERROR, "Ошибка запуска существующего контейнера: ${e.message}")
+            addAppLog(LogLevel.ERROR, "Error starting existing container: ${e.message}")
             false
         }
     }
+
     private fun createDockerComposeContent(version: String, ramSize: String, storagePath: String): String {
         return """
             services:
               macos:
-                image: dockurr/macos
+                image: dockur/macos
                 container_name: macos
                 environment:
                   VERSION: "$version"

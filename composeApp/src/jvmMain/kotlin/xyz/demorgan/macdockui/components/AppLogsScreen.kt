@@ -1,45 +1,24 @@
 package xyz.demorgan.macdockui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 import xyz.demorgan.macdockui.docker.AppLog
 import xyz.demorgan.macdockui.docker.DockerManager
 import xyz.demorgan.macdockui.docker.LogLevel
@@ -51,100 +30,51 @@ fun AppLogsScreen(
 ) {
     val logs by DockerManager.appLogs.collectAsState()
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    
+
     LaunchedEffect(logs.size) {
         if (logs.isNotEmpty()) {
-            scope.launch {
-                listState.animateScrollToItem(logs.size - 1)
-            }
+            listState.animateScrollToItem(logs.size - 1)
         }
     }
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxSize()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Логи приложения",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
+        Column(modifier = Modifier.fillMaxSize()) {
+
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = { DockerManager.clearAppLogs() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Очистить")
-                }
-                
-                IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Закрыть"
-                    )
+                Text(
+                    text = "Application Logs",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Row {
+                    IconButton(onClick = { DockerManager.clearAppLogs() }) {
+                        Icon(Icons.Default.Delete, "Clear Logs")
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, "Close")
+                    }
                 }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF1E1E1E)
-            )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Color(0xFF0D1117),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(12.dp)
+            
+            Divider()
+
+
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (logs.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Логи пусты",
-                            color = Color(0xFF7D8590),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(logs) { log ->
-                            LogItem(log = log)
-                        }
-                    }
+                items(logs) { log ->
+                    LogItem(log)
                 }
             }
         }
@@ -152,50 +82,42 @@ fun AppLogsScreen(
 }
 
 @Composable
-private fun LogItem(log: AppLog) {
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+fun LogItem(log: AppLog) {
+    val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     val color = when (log.level) {
-        LogLevel.INFO -> Color(0xFF58A6FF)
-        LogLevel.SUCCESS -> Color(0xFF3FB950)
-        LogLevel.WARNING -> Color(0xFFD29922)
-        LogLevel.ERROR -> Color(0xFFF85149)
-    }
-    
-    val icon = when (log.level) {
-        LogLevel.INFO -> "ℹ️"
-        LogLevel.SUCCESS -> "✅"
-        LogLevel.WARNING -> "⚠️"
-        LogLevel.ERROR -> "❌"
+        LogLevel.INFO -> Color.Blue
+        LogLevel.WARNING -> Color(0xFFFF9800)
+        LogLevel.ERROR -> Color.Red
+        LogLevel.SUCCESS -> Color(0xFF4CAF50)
     }
     
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), MaterialTheme.shapes.small)
+            .padding(8.dp),
         verticalAlignment = Alignment.Top
     ) {
         Text(
-            text = log.timestamp.format(timeFormatter),
-            color = Color(0xFF7D8590),
+            text = log.timestamp.format(formatter),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            modifier = Modifier.width(60.dp)
+            modifier = Modifier.width(70.dp)
         )
-        
-        Spacer(modifier = Modifier.width(8.dp))
-        
         Text(
-            text = icon,
-            fontSize = 12.sp,
-            modifier = Modifier.width(20.dp)
-        )
-        
-        Spacer(modifier = Modifier.width(8.dp))
-        
-        Text(
-            text = log.message,
+            text = "[${log.level}]",
+            style = MaterialTheme.typography.labelMedium,
             color = color,
             fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            modifier = Modifier.weight(1f)
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            modifier = Modifier.width(80.dp)
+        )
+        Text(
+            text = log.message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontFamily = FontFamily.Monospace
         )
     }
 }
